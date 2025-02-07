@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>語音辨識</title>
+  <style>
+    body {
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    #startButton {
+      padding: 15px 30px;
+      font-size: 18px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #startButton.recording {
+      background-color: #f44336;
+    }
+
+    #startButton:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    #result {
+      min-height: 100px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background-color: #f9f9f9;
+    }
+
+    #status {
+      color: #666;
+      font-style: italic;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <button id="startButton">開始錄音</button>
+    <div id="status">準備就緒</div>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const startButton = document.getElementById('startButton');
+    const status = document.getElementById('status');
+    const result = document.getElementById('result');
+
+    // 檢查瀏覽器是否支援語音辨識
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      startButton.disabled = true;
+      status.textContent = '你的瀏覽器不支援語音辨識功能';
+    } else {
+      // 創建語音辨識實例
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+
+      // 設定語音辨識參數
+      recognition.continuous = true; // 持續聆聽
+      recognition.interimResults = true; // 顯示臨時結果
+      recognition.lang = 'zh-TW'; // 設定語言為中文（台灣）
+
+      let isRecording = false;
+
+      startButton.addEventListener('click', () => {
+        if (!isRecording) {
+          // 開始錄音
+          recognition.start();
+          startButton.textContent = '停止錄音';
+          startButton.classList.add('recording');
+          status.textContent = '正在聆聽...';
+        } else {
+          // 停止錄音
+          recognition.stop();
+          startButton.textContent = '開始錄音';
+          startButton.classList.remove('recording');
+          status.textContent = '已停止';
+        }
+        isRecording = !isRecording;
+      });
+
+      // 處理結果
+      recognition.onresult = (event) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        result.innerHTML = `
+                    ${finalTranscript}
+                    <span style="color: #666;">${interimTranscript}</span>
+                `;
+      };
+
+      // 錯誤處理
+      recognition.onerror = (event) => {
+        if (event.error === 'not-allowed') {
+          status.textContent = '無法存取麥克風，請確認權限設定';
+        } else {
+          status.textContent = `發生錯誤: ${event.error}`;
+        }
+        startButton.textContent = '開始錄音';
+        startButton.classList.remove('recording');
+        isRecording = false;
+      };
+
+      // 當語音辨識服務斷線時
+      recognition.onend = () => {
+        if (isRecording) {
+          // 如果還在錄音狀態，則重新連接
+          recognition.start();
+        } else {
+          startButton.textContent = '開始錄音';
+          startButton.classList.remove('recording');
+          status.textContent = '準備就緒';
+        }
+      };
+    }
+  </script>
+</body>
+
+</html>
